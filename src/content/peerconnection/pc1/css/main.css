@@ -30,6 +30,21 @@ div.box {
   margin: 1em;
 }
 
+div#meters > div {
+  margin: 0 0 1em 0;
+}
+
+div#meters div.label {
+  display: inline-block;
+  font-weight: 400;
+  margin: 0 0.5em 0 0;
+  width: 9.5em;
+}
+
+div#meters div.value {
+  display: inline-block;
+}
+
 @media screen and (max-width: 400px) {
   button {
     width: 83px;
@@ -45,4 +60,18 @@ div.box {
     margin: 0 10px 20px 0;
   }
 
+}
+
+
+meter {
+  width: 100%;
+}
+
+
+meter#sender {
+color: #f4b400;
+}
+
+meter#receiver {
+color: #0f9d58;
 }

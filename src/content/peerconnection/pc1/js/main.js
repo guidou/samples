@@ -17,6 +17,12 @@ startButton.addEventListener('click', start);
 callButton.addEventListener('click', call);
 hangupButton.addEventListener('click', hangup);
 
+// const senderMeter = document.querySelector('#sender meter');
+// const senderValueDisplay = document.querySelector('#sender .value');
+const receiverMeter = document.querySelector('#receiver meter');
+const receiverValueDisplay = document.querySelector('#receiver .value');
+
+
 let startTime;
 const localVideo = document.getElementById('localVideo');
 const remoteVideo = document.getElementById('remoteVideo');
@@ -60,7 +66,7 @@ async function start() {
   console.log('Requesting local stream');
   startButton.disabled = true;
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({audio: true, video: true});
+    const stream = await navigator.mediaDevices.getUserMedia({audio: false, video: true});
     console.log('Received local stream');
     localVideo.srcObject = stream;
     localStream = stream;
@@ -163,6 +169,62 @@ function gotRemoteStream(e) {
   if (remoteVideo.srcObject !== e.streams[0]) {
     remoteVideo.srcObject = e.streams[0];
     console.log('pc2 received remote stream');
+    let receivers = pc2.getReceivers();
+    console.log("num receivers = ", receivers.length);
+    let video_receiver = null;
+    for (const r of receivers) {
+      console.log('r is ' + r.track.kind)
+      if (r.track.kind == 'video')
+        video_receiver = r;
+    }
+    console.log('video_receiver = ' + video_receiver);
+    if (!video_receiver)
+      return;
+
+
+    let frameIndex = 0;
+    //let my_transform = new TransformStream();
+    let my_transform = new TransformStream({
+      start() {
+          console.log('START!!!');
+      },
+
+      async transform(chunk, controller) {
+          console.log(chunk);
+          console.log('chunk.data = ' + chunk.data);
+          console.log('chunk.data.length =  ' + chunk.data.byteLength)
+          receiverMeter.value = chunk.data.byteLength/50000.0;
+          receiverValueDisplay.innerText = chunk.type + "  " + chunk.data.byteLength;
+
+          let view = new DataView(chunk.data);
+          console.log('data[0] = ' + view.getInt8(0));
+          //if (++frameIndex % 2 == 0)
+          //  view.setInt8(0,0);
+
+          // for (let i =0; i<chunk.data.length;++i)
+          //  view.setInt8(i,0);
+          // console.log('after_data[0] = ' + view.getInt8(0));
+
+          // if (++frameIndex %2 == 0)
+          //   controller.enqueue(chunk);
+
+          controller.enqueue(chunk);
+          console.log('enqueued');
+      },
+
+      flush() {
+          console.log('FLUSH!!!')
+      }
+
+    });
+    let readable = video_receiver.videoFromPacketizer;
+    let writable = video_receiver.videoToDecoder;
+
+    video_receiver.videoFromPacketizer
+      .pipeThrough(my_transform)
+      .pipeTo(video_receiver.videoToDecoder)
+      .then(() => console.log("All data successfully transformed!"))
+      .catch(e => console.error("Something went wrong!", e));
   }
 }
 
