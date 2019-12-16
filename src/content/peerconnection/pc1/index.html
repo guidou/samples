@@ -45,15 +45,25 @@
     <video id="remoteVideo" playsinline autoplay></video>
 
     <div id="meters">
-        <!-- <div id="sender">
+        <div id="sender">
             <div class="label">Sender:</div>
             <meter high="0.25" max="1" value="0"></meter>
             <div class="value"></div>
-        </div> -->
+            <br>
+            <input type="checkbox" id="sender_zero_every_two" onclick="updateSenderZeroEveryTwo()"> Zero first byte every two frames<br>
+            <input type="checkbox" id="sender_zero_all_delta" onclick="updateSenderZeroAllDelta()"> Zero first byte of all delta frames<br>
+            <input type="checkbox" id="sender_xor" onclick="updateSenderXor()"> Negate frame<br>
+        </div>
         <div id="receiver">
             <div class="label">Receiver frame size:</div>
             <meter high="0.25" max="1" value="0"></meter>
             <div class="value"></div>
+            <br>
+            <input type="checkbox" id="receiver_zero_every_two" onclick="updateReceiverZeroEveryTwo()"> Zero first byte every two frames<br>
+            <input type="checkbox" id="receiver_zero_all_delta" onclick="updateReceiverZeroAllDelta()"> Zero first byte of all delta frames<br>
+            <input type="checkbox" id="receiver_xor" onclick="updateReceiverXor()"> Negate frame<br>
+            <!-- <input type="checkbox" id="receiver_drop_every_two" onclick="updateReceiverDropEveryTwo()">Drop every two frames<br>
+            <input type="checkbox" id="receiver_drop_all_delta" onclick="updateReceiverDropAllDelta()">Drop all delta frames<br> -->
         </div>
     </div>
 

@@ -17,10 +17,21 @@ startButton.addEventListener('click', start);
 callButton.addEventListener('click', call);
 hangupButton.addEventListener('click', hangup);
 
-// const senderMeter = document.querySelector('#sender meter');
-// const senderValueDisplay = document.querySelector('#sender .value');
+let senderFrameIndex = 0;
+const senderMeter = document.querySelector('#sender meter');
+const senderValueDisplay = document.querySelector('#sender .value');
+let senderZeroEveryTwo = false;
+let senderZeroAllDelta = false;
+let senderXor = false;
+
+
 const receiverMeter = document.querySelector('#receiver meter');
 const receiverValueDisplay = document.querySelector('#receiver .value');
+let receiverZeroEveryTwo = false;
+let receiverZeroAllDelta = false;
+let receiverDropEveryTwo = false;
+let receiverDropAllDelta = false;
+let receiverXor = false;
 
 
 let startTime;
@@ -49,6 +60,7 @@ remoteVideo.addEventListener('resize', () => {
 let localStream;
 let pc1;
 let pc2;
+let video_sender;
 const offerOptions = {
   offerToReceiveAudio: 1,
   offerToReceiveVideo: 1
@@ -107,8 +119,10 @@ async function call() {
   pc2.addEventListener('iceconnectionstatechange', e => onIceStateChange(pc2, e));
   pc2.addEventListener('track', gotRemoteStream);
 
-  localStream.getTracks().forEach(track => pc1.addTrack(track, localStream));
-  console.log('Added local stream to pc1');
+  //localStream.getTracks().forEach(track => pc1.addTrack(track, localStream));
+  video_sender = pc1.addTrack(localStream.getVideoTracks()[0], localStream)
+  console.log('Added local stream to pc1. SENDER = ' + video_sender);
+  await setupSenderStreams();
 
   try {
     console.log('pc1 createOffer start');
@@ -190,26 +204,32 @@ function gotRemoteStream(e) {
       },
 
       async transform(chunk, controller) {
-          console.log(chunk);
-          console.log('chunk.data = ' + chunk.data);
-          console.log('chunk.data.length =  ' + chunk.data.byteLength)
+          // console.log(chunk);
+          // console.log('chunk.data = ' + chunk.data);
+          // console.log('chunk.data.length =  ' + chunk.data.byteLength)
           receiverMeter.value = chunk.data.byteLength/50000.0;
           receiverValueDisplay.innerText = chunk.type + "  " + chunk.data.byteLength;
 
           let view = new DataView(chunk.data);
-          console.log('data[0] = ' + view.getInt8(0));
-          //if (++frameIndex % 2 == 0)
-          //  view.setInt8(0,0);
+          // console.log('data[0] = ' + view.getInt8(0));
 
-          // for (let i =0; i<chunk.data.length;++i)
-          //  view.setInt8(i,0);
-          // console.log('after_data[0] = ' + view.getInt8(0));
+          ++frameIndex;
+          if ((receiverZeroEveryTwo && frameIndex % 2 == 0) || (receiverZeroAllDelta && chunk.type == "delta")) {
+            view.setInt8(0,0);
+          }
 
-          // if (++frameIndex %2 == 0)
-          //   controller.enqueue(chunk);
+          if (receiverXor) {
+            for (let i = 1; i < chunk.data.byteLength; ++i)
+              view.setInt8(i, ~view.getInt8(i));
+          }
+
+          // if ((receiverDropEveryTwo && frameIndex % 2 == 0) || (receiverDropAllDelta && chunk.type == "delta")) {
+          //   // console.log('dropped frame');
+          //   return;
+          // }
 
           controller.enqueue(chunk);
-          console.log('enqueued');
+          // console.log('enqueued frame');
       },
 
       flush() {
@@ -217,8 +237,6 @@ function gotRemoteStream(e) {
       }
 
     });
-    let readable = video_receiver.videoFromPacketizer;
-    let writable = video_receiver.videoToDecoder;
 
     video_receiver.videoFromPacketizer
       .pipeThrough(my_transform)
@@ -279,4 +297,98 @@ function hangup() {
   pc2 = null;
   hangupButton.disabled = true;
   callButton.disabled = false;
+}
+
+function updateReceiverZeroEveryTwo() {
+  let checkBox = document.getElementById("receiver_zero_every_two");
+  receiverZeroEveryTwo = checkBox.checked;
+  console.log('SET receiverZeroEveryTwo to ' + receiverZeroEveryTwo);
+}
+
+function updateReceiverZeroAllDelta() {
+  let checkBox = document.getElementById("receiver_zero_all_delta");
+  receiverZeroAllDelta = checkBox.checked;
+  console.log('SET receiverZeroAllDelta to ' + receiverZeroAllDelta);
+}
+
+function updateSenderZeroEveryTwo() {
+  let checkBox = document.getElementById("sender_zero_every_two");
+  senderZeroEveryTwo = checkBox.checked;
+  console.log('SET senderZeroEveryTwo to ' + senderZeroEveryTwo);
+}
+
+function updateSenderZeroAllDelta() {
+  let checkBox = document.getElementById("sender_zero_all_delta");
+  senderZeroAllDelta = checkBox.checked;
+  console.log('SET receiverZeroAllDelta to ' + senderZeroAllDelta);
+}
+
+function updateSenderXor() {
+  let checkBox = document.getElementById("sender_xor");
+  senderXor = checkBox.checked;
+  console.log('SET senderXor to ' + senderXor);
+}
+
+function updateReceiverXor() {
+  let checkBox = document.getElementById("receiver_xor");
+  receiverXor = checkBox.checked;
+  console.log('SET receiverXor to ' + receiverXor);
+}
+
+function updateReceiverDropEveryTwo() {
+  let checkBox = document.getElementById("receiver_drop_every_two");
+  receiverDropEveryTwo = checkBox.checked;
+  console.log('SET receiverDropEveryTwo to ' + receiverDropEveryTwo);
+}
+
+function updateReceiverDropAllDelta() {
+  let checkBox = document.getElementById("receiver_drop_all_delta");
+  receiverDropAllDelta = checkBox.checked;
+  console.log('SET receiverZeroAllDelta to ' + receiverDropAllDelta);
+}
+
+
+
+async function setupSenderStreams() {
+  console.log('SENDER STREAMS');
+  let sender_transform = new TransformStream({
+    start() {
+        console.log('SENDER START!!!');
+    },
+
+    async transform(chunk, controller) {
+        // console.log(chunk);
+        // console.log('chunk.data = ' + chunk.data);
+        // console.log('chunk.data.length =  ' + chunk.data.byteLength)
+        senderMeter.value = chunk.data.byteLength/50000.0;
+        senderValueDisplay.innerText = chunk.type + "  " + chunk.data.byteLength;
+
+        let view = new DataView(chunk.data);
+        // console.log('data[0] = ' + view.getInt8(0));
+
+        ++senderFrameIndex;
+        if ((senderZeroEveryTwo && senderFrameIndex % 2 == 0) || (senderZeroAllDelta && chunk.type == "delta")) {
+          view.setInt8(0,0);
+        }
+
+        if (senderXor) {
+          for (let i = 1; i < chunk.data.byteLength; ++i)
+            view.setInt8(i, ~view.getInt8(i));
+      }
+
+        controller.enqueue(chunk);
+        // console.log('enqueued sender frame');
+    },
+
+    flush() {
+        console.log('SENDER FLUSH!!!')
+    }
+
+  });
+
+  video_sender.videoFromEncoder
+    .pipeThrough(sender_transform)
+    .pipeTo(video_sender.videoToPacketizer)
+    .then(() => console.log("All data successfully transformed!"))
+    .catch(e => console.error("Something went wrong!", e));
 }
