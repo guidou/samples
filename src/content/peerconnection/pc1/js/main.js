@@ -121,7 +121,20 @@ async function call() {
 
   //localStream.getTracks().forEach(track => pc1.addTrack(track, localStream));
   video_sender = pc1.addTrack(localStream.getVideoTracks()[0], localStream)
-  console.log('Added local stream to pc1. SENDER = ' + video_sender);
+  console.log('Added my local stream to pc1. SENDER = ' + video_sender);
+  let transceiver = null;
+  [transceiver] = pc1.getTransceivers();
+  console.log('TRANSCEIVER =  ' + transceiver);
+  console.log('TRANSCEIVER.sender =  ' + transceiver.sender);
+  const codecs = RTCRtpSender.getCapabilities('video').codecs;
+  console.log('IS SAME SENDER = ' + (transceiver.sender == video_sender));
+  let mycodecs = [];
+  for (let c of codecs) {
+    if (c.mimeType == 'video/VP9')
+      mycodecs.push(c);
+  }
+  console.log('MYCODECS = '  + JSON.stringify(mycodecs));
+  //transceiver.setCodecPreferences(mycodecs);
   await setupSenderStreams();
 
   try {
