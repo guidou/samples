@@ -17,6 +17,7 @@ startButton.addEventListener('click', start);
 callButton.addEventListener('click', call);
 hangupButton.addEventListener('click', hangup);
 
+let sender_worker = new Worker('js/sender_worker.js')
 let senderFrameIndex = 0;
 const senderMeter = document.querySelector('#sender meter');
 const senderValueDisplay = document.querySelector('#sender .value');
@@ -128,13 +129,14 @@ async function call() {
   console.log('TRANSCEIVER.sender =  ' + transceiver.sender);
   const codecs = RTCRtpSender.getCapabilities('video').codecs;
   console.log('IS SAME SENDER = ' + (transceiver.sender == video_sender));
-  let mycodecs = [];
-  for (let c of codecs) {
-    if (c.mimeType == 'video/VP9')
-      mycodecs.push(c);
-  }
-  console.log('MYCODECS = '  + JSON.stringify(mycodecs));
-  //transceiver.setCodecPreferences(mycodecs);
+
+  // let mycodecs = [];
+  // for (let c of codecs) {
+  //   if (c.mimeType == 'video/VP9')
+  //     mycodecs.push(c);
+  // }
+  // console.log('MYCODECS = '  + JSON.stringify(mycodecs));
+  // transceiver.setCodecPreferences(mycodecs);
   await setupSenderStreams();
 
   try {
@@ -251,9 +253,9 @@ function gotRemoteStream(e) {
 
     });
 
-    video_receiver.videoFromPacketizer
+    video_receiver.getEncodedVideoStreams().readable
       .pipeThrough(my_transform)
-      .pipeTo(video_receiver.videoToDecoder)
+      .pipeTo(video_receiver.getEncodedVideoStreams().writable)
       .then(() => console.log("All data successfully transformed!"))
       .catch(e => console.error("Something went wrong!", e));
   }
@@ -338,8 +340,11 @@ function updateSenderZeroAllDelta() {
 
 function updateSenderXor() {
   let checkBox = document.getElementById("sender_xor");
-  senderXor = checkBox.checked;
-  console.log('SET senderXor to ' + senderXor);
+  //senderXor = checkBox.checked;
+  //console.log('SET senderXor to ' + senderXor);
+  let my_sender_xor = checkBox.checked;
+  console.log('SET my_sender_xor to ' + my_sender_xor);
+  sender_worker.postMessage({xor: my_sender_xor});
 }
 
 function updateReceiverXor() {
@@ -363,45 +368,6 @@ function updateReceiverDropAllDelta() {
 
 
 async function setupSenderStreams() {
-  console.log('SENDER STREAMS');
-  let sender_transform = new TransformStream({
-    start() {
-        console.log('SENDER START!!!');
-    },
-
-    async transform(chunk, controller) {
-        // console.log(chunk);
-        // console.log('chunk.data = ' + chunk.data);
-        // console.log('chunk.data.length =  ' + chunk.data.byteLength)
-        senderMeter.value = chunk.data.byteLength/50000.0;
-        senderValueDisplay.innerText = chunk.type + "  " + chunk.data.byteLength;
-
-        let view = new DataView(chunk.data);
-        // console.log('data[0] = ' + view.getInt8(0));
-
-        ++senderFrameIndex;
-        if ((senderZeroEveryTwo && senderFrameIndex % 2 == 0) || (senderZeroAllDelta && chunk.type == "delta")) {
-          view.setInt8(0,0);
-        }
-
-        if (senderXor) {
-          for (let i = 1; i < chunk.data.byteLength; ++i)
-            view.setInt8(i, ~view.getInt8(i));
-      }
-
-        controller.enqueue(chunk);
-        // console.log('enqueued sender frame');
-    },
-
-    flush() {
-        console.log('SENDER FLUSH!!!')
-    }
-
-  });
-
-  video_sender.videoFromEncoder
-    .pipeThrough(sender_transform)
-    .pipeTo(video_sender.videoToPacketizer)
-    .then(() => console.log("All data successfully transformed!"))
-    .catch(e => console.error("Something went wrong!", e));
+  let sender_streams = video_sender.getEncodedVideoStreams();
+  sender_worker.postMessage({r: sender_streams.readable, w: sender_streams.writable}, [sender_streams.readable, sender_streams.writable]);
 }
