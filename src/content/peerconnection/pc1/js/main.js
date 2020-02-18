@@ -21,9 +21,6 @@ let sender_worker = new Worker('js/sender_worker.js')
 let senderFrameIndex = 0;
 const senderMeter = document.querySelector('#sender meter');
 const senderValueDisplay = document.querySelector('#sender .value');
-let senderZeroEveryTwo = false;
-let senderZeroAllDelta = false;
-let senderXor = false;
 
 
 const receiverMeter = document.querySelector('#receiver meter');
@@ -108,7 +105,8 @@ async function call() {
   if (audioTracks.length > 0) {
     console.log(`Using audio device: ${audioTracks[0].label}`);
   }
-  const configuration = getSelectedSdpSemantics();
+  let configuration = getSelectedSdpSemantics();
+  configuration.forceEncodedVideoInsertableStreams = true;
   console.log('RTCPeerConnection configuration:', configuration);
   pc1 = new RTCPeerConnection(configuration);
   console.log('Created local peer connection object pc1');
@@ -226,16 +224,20 @@ function gotRemoteStream(e) {
           receiverValueDisplay.innerText = chunk.type + "  " + chunk.data.byteLength;
 
           let view = new DataView(chunk.data);
+          let newData = new ArrayBuffer(chunk.data.byteLength);
+          let newView = new DataView(newData);
+          for (let i = 0; i < chunk.data.byteLength; ++i)
+            newView.setInt8(i, view.getInt8(i));
           // console.log('data[0] = ' + view.getInt8(0));
 
           ++frameIndex;
           if ((receiverZeroEveryTwo && frameIndex % 2 == 0) || (receiverZeroAllDelta && chunk.type == "delta")) {
-            view.setInt8(0,0);
+            newView.setInt8(0,0);
           }
 
           if (receiverXor) {
             for (let i = 1; i < chunk.data.byteLength; ++i)
-              view.setInt8(i, ~view.getInt8(i));
+              newView.setInt8(i, ~newView.getInt8(i));
           }
 
           // if ((receiverDropEveryTwo && frameIndex % 2 == 0) || (receiverDropAllDelta && chunk.type == "delta")) {
@@ -243,6 +245,7 @@ function gotRemoteStream(e) {
           //   return;
           // }
 
+          chunk.data = newData;
           controller.enqueue(chunk);
           // console.log('enqueued frame');
       },
@@ -253,9 +256,10 @@ function gotRemoteStream(e) {
 
     });
 
-    video_receiver.getEncodedVideoStreams().readable
+    let receiver_streams = video_receiver.createEncodedVideoStreams();
+    receiver_streams.readable
       .pipeThrough(my_transform)
-      .pipeTo(video_receiver.getEncodedVideoStreams().writable)
+      .pipeTo(receiver_streams.writable)
       .then(() => console.log("All data successfully transformed!"))
       .catch(e => console.error("Something went wrong!", e));
   }
@@ -328,23 +332,20 @@ function updateReceiverZeroAllDelta() {
 
 function updateSenderZeroEveryTwo() {
   let checkBox = document.getElementById("sender_zero_every_two");
-  senderZeroEveryTwo = checkBox.checked;
-  console.log('SET senderZeroEveryTwo to ' + senderZeroEveryTwo);
+  console.log('SET senderZeroEveryTwo to ' + checkBox.checked);
+  sender_worker.postMessage({sender_zero_every_two: checkBox.checked});
 }
 
 function updateSenderZeroAllDelta() {
   let checkBox = document.getElementById("sender_zero_all_delta");
-  senderZeroAllDelta = checkBox.checked;
-  console.log('SET receiverZeroAllDelta to ' + senderZeroAllDelta);
+  console.log('SET senderZeroAllDelta to ' + checkBox.checked);
+  sender_worker.postMessage({sender_zero_all_data: checkBox.checked});
 }
 
 function updateSenderXor() {
   let checkBox = document.getElementById("sender_xor");
-  //senderXor = checkBox.checked;
-  //console.log('SET senderXor to ' + senderXor);
-  let my_sender_xor = checkBox.checked;
-  console.log('SET my_sender_xor to ' + my_sender_xor);
-  sender_worker.postMessage({xor: my_sender_xor});
+  console.log('SET my_sender_xor to ' + checkBox.checked);
+  sender_worker.postMessage({xor: checkBox.checked});
 }
 
 function updateReceiverXor() {
@@ -365,9 +366,10 @@ function updateReceiverDropAllDelta() {
   console.log('SET receiverZeroAllDelta to ' + receiverDropAllDelta);
 }
 
-
-
 async function setupSenderStreams() {
-  let sender_streams = video_sender.getEncodedVideoStreams();
-  sender_worker.postMessage({r: sender_streams.readable, w: sender_streams.writable}, [sender_streams.readable, sender_streams.writable]);
+  let sender_streams = video_sender.createEncodedVideoStreams()
+  console.log("readable", sender_streams.readable);
+  console.log("writable", sender_streams.writable);
+  sender_worker.postMessage({r: sender_streams.readable, w: sender_streams.writable},
+     [sender_streams.readable, sender_streams.writable]);
 }

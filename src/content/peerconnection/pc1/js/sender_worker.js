@@ -1,4 +1,7 @@
+let senderFrameIndex = 0;
 let senderXor = false;
+let senderZeroAllDelta = false;
+let senderZeroEveryTwo = false;
 onmessage = async (evt) => {
     console.log('[webrtc] worker: got message ' + evt)
     if (evt.data.r && evt.data.w) {
@@ -25,22 +28,27 @@ onmessage = async (evt) => {
             //   senderValueDisplay.innerText = chunk.type + "  " + chunk.data.byteLength;
 
             let view = new DataView(chunk.data);
+            let newData = new ArrayBuffer(chunk.data.byteLength);
+            let newView = new DataView(newData);
+            for (let i = 0; i < chunk.data.byteLength; ++i)
+              newView.setInt8(i, view.getInt8(i));
             // console.log('data[0] = ' + view.getInt8(0));
 
-            //   ++senderFrameIndex;
-            //   if ((senderZeroEveryTwo && senderFrameIndex % 2 == 0) || (senderZeroAllDelta && chunk.type == "delta")) {
-            //     view.setInt8(0,0);
-            //   }
+              ++senderFrameIndex;
+              if ((senderZeroEveryTwo && senderFrameIndex % 2 == 0) || (senderZeroAllDelta && chunk.type == "delta")) {
+                newView.setInt8(0,0);
+              }
 
             if (senderXor) {
                 console.log('negating');
                 for (let i = 1; i < chunk.data.byteLength; ++i)
-                view.setInt8(i, ~view.getInt8(i));
+                newView.setInt8(i, ~newView.getInt8(i));
             } else {
                 console.log('NOT negating');
             }
 
             // console.log('TS=',chunk.timestamp);
+            chunk.data = newData;
             controller.enqueue(chunk);
             // console.log('SENDER enqueued sender frame');
         },
@@ -51,7 +59,7 @@ onmessage = async (evt) => {
 
         });
 
-        //await
+        await
         readable
         .pipeThrough(sender_transform)
         .pipeTo(writable)
@@ -60,5 +68,11 @@ onmessage = async (evt) => {
     } else if (evt.data.xor != undefined) {
         senderXor = evt.data.xor;
         console.log('SENDER_WORKER GOT MESSAGE: NEGATING = ' + senderXor);
+    }  else if (evt.data.sender_zero_all_data != undefined) {
+        senderZeroAllDelta = evt.data.sender_zero_all_data;
+        console.log('SENDER_WORKER GOT MESSAGE: senderZeroAllDelta = ' + senderZeroAllDelta);
+    }  else if (evt.data.sender_zero_every_two != undefined) {
+        senderZeroEveryTwo = evt.data.sender_zero_every_two;
+        console.log('SENDER_WORKER GOT MESSAGE: senderZeroAllDelta = ' + senderZeroEveryTwo);
     }
 };
