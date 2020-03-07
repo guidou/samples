@@ -20,9 +20,9 @@ onmessage = async (evt) => {
         },
 
         async transform(chunk, controller) {
-            // console.log(chunk);
-            // console.log('chunk.data = ' + chunk.data);
-            // console.log('SENDER chunk.data.length =  ' + chunk.data.byteLength)
+            console.log(chunk);
+            console.log('chunk.data = ' + chunk.data);
+            console.log('SENDER chunk.data.length =  ' + chunk.data.byteLength)
 
             //   senderMeter.value = chunk.data.byteLength/50000.0;
             //   senderValueDisplay.innerText = chunk.type + "  " + chunk.data.byteLength;

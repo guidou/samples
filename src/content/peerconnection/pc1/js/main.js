@@ -217,9 +217,9 @@ function gotRemoteStream(e) {
       },
 
       async transform(chunk, controller) {
-          // console.log(chunk);
-          // console.log('chunk.data = ' + chunk.data);
-          // console.log('chunk.data.length =  ' + chunk.data.byteLength)
+          console.log(chunk);
+          console.log('chunk.data = ' + chunk.data);
+          console.log('chunk.data.length =  ' + chunk.data.byteLength)
           receiverMeter.value = chunk.data.byteLength/50000.0;
           receiverValueDisplay.innerText = chunk.type + "  " + chunk.data.byteLength;
 
@@ -257,9 +257,9 @@ function gotRemoteStream(e) {
     });
 
     let receiver_streams = video_receiver.createEncodedVideoStreams();
-    receiver_streams.readable
+    receiver_streams.readableStream
       .pipeThrough(my_transform)
-      .pipeTo(receiver_streams.writable)
+      .pipeTo(receiver_streams.writableStream)
       .then(() => console.log("All data successfully transformed!"))
       .catch(e => console.error("Something went wrong!", e));
   }
@@ -368,8 +368,8 @@ function updateReceiverDropAllDelta() {
 
 async function setupSenderStreams() {
   let sender_streams = video_sender.createEncodedVideoStreams()
-  console.log("readable", sender_streams.readable);
-  console.log("writable", sender_streams.writable);
-  sender_worker.postMessage({r: sender_streams.readable, w: sender_streams.writable},
-     [sender_streams.readable, sender_streams.writable]);
+  console.log("readable", sender_streams.readableStream);
+  console.log("writable", sender_streams.writableStream);
+  sender_worker.postMessage({r: sender_streams.readableStream, w: sender_streams.writableStream},
+     [sender_streams.readableStream, sender_streams.writableStream]);
 }
