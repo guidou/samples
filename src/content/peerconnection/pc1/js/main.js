@@ -236,7 +236,7 @@ function gotRemoteStream(e) {
           }
 
           if (receiverXor) {
-            for (let i = 1; i < chunk.data.byteLength; ++i)
+            for (let i = 0; i < chunk.data.byteLength; ++i)
               newView.setInt8(i, ~newView.getInt8(i));
           }
 
