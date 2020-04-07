@@ -217,9 +217,9 @@ function gotRemoteStream(e) {
       },
 
       async transform(chunk, controller) {
-          console.log(chunk);
-          console.log('chunk.data = ' + chunk.data);
-          console.log('chunk.data.length =  ' + chunk.data.byteLength)
+          // console.log(chunk);
+          // console.log('chunk.data = ' + chunk.data);
+          // console.log('chunk.data.length =  ' + chunk.data.byteLength)
           receiverMeter.value = chunk.data.byteLength/50000.0;
           receiverValueDisplay.innerText = chunk.type + "  " + chunk.data.byteLength;
 
@@ -236,8 +236,11 @@ function gotRemoteStream(e) {
           }
 
           if (receiverXor) {
+            console.log('RECEIVER NEGATING');
             for (let i = 0; i < chunk.data.byteLength; ++i)
               newView.setInt8(i, ~newView.getInt8(i));
+          } else {
+            console.log('RECEIVER NOT NEGATING');
           }
 
           // if ((receiverDropEveryTwo && frameIndex % 2 == 0) || (receiverDropAllDelta && chunk.type == "delta")) {

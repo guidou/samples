@@ -20,12 +20,15 @@ onmessage = async (evt) => {
         },
 
         async transform(chunk, controller) {
-            console.log(chunk);
-            console.log('chunk.data = ' + chunk.data);
-            console.log('SENDER chunk.data.length =  ' + chunk.data.byteLength)
+            // console.log(chunk);
+            // console.log('chunk.data = ' + chunk.data);
+            // console.log('SENDER chunk.data.length =  ' + chunk.data.byteLength)
+            // console.log('SENDER transform')
 
             //   senderMeter.value = chunk.data.byteLength/50000.0;
             //   senderValueDisplay.innerText = chunk.type + "  " + chunk.data.byteLength;
+
+            console.log('Sender frame is ', chunk.type);
 
             let view = new DataView(chunk.data);
             let newData = new ArrayBuffer(chunk.data.byteLength);
@@ -40,15 +43,19 @@ onmessage = async (evt) => {
               }
 
             if (senderXor) {
-                console.log('negating');
-                for (let i = 0; i < chunk.data.byteLength; ++i)
-                newView.setInt8(i, ~newView.getInt8(i));
+              console.log('SENDER NEGATING');
+              console.log('oldData[0] = ', newView.getUint8(0));
+              for (let i = 0; i < chunk.data.byteLength; ++i)
+                newView.setInt8(i, 0xFF);//~newView.getInt8(i));
+              console.log('newData[0] = ', newView.getUint8(0));
             } else {
-                console.log('NOT negating');
+                console.log('SENDER NOT negating');
             }
 
             // console.log('TS=',chunk.timestamp);
             chunk.data = newData;
+            let view2 = new DataView(chunk.data);
+            console.log('view2[0] = ', view2.getUint8(0));
             controller.enqueue(chunk);
             // console.log('SENDER enqueued sender frame');
         },
