@@ -128,13 +128,19 @@ async function call() {
   const codecs = RTCRtpSender.getCapabilities('video').codecs;
   console.log('IS SAME SENDER = ' + (transceiver.sender == video_sender));
 
-  // let mycodecs = [];
-  // for (let c of codecs) {
-  //   if (c.mimeType == 'video/VP9')
-  //     mycodecs.push(c);
-  // }
-  // console.log('MYCODECS = '  + JSON.stringify(mycodecs));
-  // transceiver.setCodecPreferences(mycodecs);
+  let mycodecs = [];
+  for (let c of codecs) {
+    console.log('CODEC: ', c.mimeType);
+    // if (c.mimeType == 'video/VP9') {
+    if (c.mimeType == 'video/H264') {
+        console.log(' PUSHING ', c.mimeType);
+      mycodecs.push(c);
+    } else {
+      console.log(' EXCLUDING', c.mimeType);
+    }
+  }
+  console.log('MYCODECS = '  + JSON.stringify(mycodecs));
+  transceiver.setCodecPreferences(mycodecs);
   await setupSenderStreams();
 
   try {
